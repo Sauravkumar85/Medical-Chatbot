@@ -1,5 +1,6 @@
 
 import os
+import threading
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -17,127 +18,91 @@ from src.helper import download_hugging_face_embeddings
 from src.prompt import system_prompt
 
 
-# --------------------------------------------------
-# 1. Initialize Flask application
-# --------------------------------------------------
-
 app = Flask(__name__)
 
 PROJECT_DIR = Path(__file__).resolve().parent
-
-
-# --------------------------------------------------
-# 2. Load environment variables from .env
-# --------------------------------------------------
-
 load_dotenv(PROJECT_DIR / ".env", override=False)
 
+# Render environment variables are configured in the dashboard.
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 google_api_key = (
     os.getenv("GOOGLE_API_KEY")
     or os.getenv("GEMINI_API_KEY")
 )
 
-if not pinecone_api_key:
-    raise RuntimeError(
-        "PINECONE_API_KEY is missing. Check your .env file."
-    )
+if pinecone_api_key:
+    os.environ["PINECONE_API_KEY"] = pinecone_api_key
 
-if not google_api_key:
-    raise RuntimeError(
-        "GOOGLE_API_KEY or GEMINI_API_KEY is missing. "
-        "Check your .env file."
-    )
+if google_api_key:
+    os.environ["GOOGLE_API_KEY"] = google_api_key
 
-# Make the keys available to the respective SDKs
-os.environ["PINECONE_API_KEY"] = pinecone_api_key
-os.environ["GOOGLE_API_KEY"] = google_api_key
+# Initialize the chatbot only when needed.
+rag_chain = None
+initialization_lock = threading.Lock()
 
 
-# --------------------------------------------------
-# 3. Load Hugging Face embedding model
-# --------------------------------------------------
+def get_rag_chain():
+    global rag_chain
 
-print("Loading embedding model...")
+    if rag_chain is not None:
+        return rag_chain
 
-embeddings = download_hugging_face_embeddings()
+    with initialization_lock:
+        if rag_chain is not None:
+            return rag_chain
 
-print("Embedding model loaded successfully.")
+        if not pinecone_api_key:
+            raise RuntimeError("PINECONE_API_KEY is missing in Render Environment Variables.")
 
+        if not google_api_key:
+            raise RuntimeError("GOOGLE_API_KEY is missing in Render Environment Variables.")
 
-# --------------------------------------------------
-# 4. Connect to the existing Pinecone index
-# --------------------------------------------------
+        app.logger.info("Loading embedding model...")
+        embeddings = download_hugging_face_embeddings()
+        app.logger.info("Embedding model loaded.")
 
-index_name = "medical-chatbot"
+        index_name = "medical-chatbot"
+        app.logger.info("Connecting to Pinecone index: %s", index_name)
 
-print(f"Connecting to Pinecone index: {index_name}")
+        docsearch = PineconeVectorStore.from_existing_index(
+            index_name=index_name,
+            embedding=embeddings
+        )
 
-docsearch = PineconeVectorStore.from_existing_index(
-    index_name=index_name,
-    embedding=embeddings
-)
+        retriever = docsearch.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 3}
+        )
 
-retriever = docsearch.as_retriever(
-    search_type="similarity",
-    search_kwargs={"k": 3}
-)
+        chat_model = ChatGoogleGenerativeAI(
+            model="gemini-3.8-flash",
+            google_api_key=google_api_key,
+            temperature=0.3
+        )
 
-print("Pinecone retriever initialized successfully.")
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}")
+        ])
 
+        question_answer_chain = create_stuff_documents_chain(
+            chat_model,
+            prompt
+        )
 
-# --------------------------------------------------
-# 5. Initialize Gemini model
-# --------------------------------------------------
+        rag_chain = create_retrieval_chain(
+            retriever,
+            question_answer_chain
+        )
 
-chatModel = ChatGoogleGenerativeAI(
-    model="gemini-3.8-flash",
-    google_api_key=google_api_key,
-    temperature=0.3
-)
+        app.logger.info("Medical chatbot initialized successfully.")
+        return rag_chain
 
-print("Gemini model initialized successfully.")
-
-
-# --------------------------------------------------
-# 6. Create prompt template
-# --------------------------------------------------
-
-prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt),
-    ("human", "{input}")
-])
-
-
-# --------------------------------------------------
-# 7. Create the RAG chain
-# --------------------------------------------------
-
-question_answer_chain = create_stuff_documents_chain(
-    chatModel,
-    prompt
-)
-
-rag_chain = create_retrieval_chain(
-    retriever,
-    question_answer_chain
-)
-
-print("Medical chatbot RAG chain initialized successfully.")
-
-
-# --------------------------------------------------
-# 8. Flask home route
-# --------------------------------------------------
 
 @app.route("/")
 def index():
     return render_template("chat.html")
 
-
-# --------------------------------------------------
-# 9. Flask chat route
-# --------------------------------------------------
 
 @app.route("/get", methods=["GET", "POST"])
 def chat():
@@ -147,34 +112,24 @@ def chat():
         return "Please enter a question.", 400
 
     try:
-        response = rag_chain.invoke({
-            "input": user_message
-        })
+        chain = get_rag_chain()
+        response = chain.invoke({"input": user_message})
 
-        answer = response.get(
-            "answer",
-            "Sorry, I could not generate an answer."
+        return str(
+            response.get(
+                "answer",
+                "Sorry, I could not generate an answer."
+            )
         )
-
-        return str(answer)
 
     except Exception:
         app.logger.exception("Medical chatbot request failed")
         return (
-            "Sorry, an error occurred while processing "
-            "your question. Please try again."
+            "Sorry, the chatbot could not process your question. "
+            "Please check the Render logs."
         ), 500
 
 
-# --------------------------------------------------
-# 10. Run Flask application
-# --------------------------------------------------
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False
-    )
+    app.run(host="0.0.0.0", port=port, debug=False)
