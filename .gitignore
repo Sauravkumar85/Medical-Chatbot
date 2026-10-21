@@ -205,3 +205,25 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+
+# Python environments and cache
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Logs and local configuration
+*.log
+.vscode/
+.idea/
