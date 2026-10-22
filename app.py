@@ -42,7 +42,7 @@ if GOOGLE_API_KEY:
 
 
 # --------------------------------------------------
-# 2. Lazy initialization: initialize only once
+# 2. Lazy initialization
 # --------------------------------------------------
 
 rag_chain = None
@@ -71,15 +71,17 @@ def get_rag_chain():
 
         start_time = time.monotonic()
 
-        # Load embeddings
+        # Load embedding model
         app.logger.info("STEP 1: Loading embedding model...")
+
         embeddings = download_hugging_face_embeddings()
+
         app.logger.info(
             "STEP 1 COMPLETE: Embeddings loaded in %.2f seconds.",
             time.monotonic() - start_time,
         )
 
-        # Connect to the existing Pinecone index
+        # Connect to existing Pinecone index
         app.logger.info("STEP 2: Connecting to Pinecone...")
 
         docsearch = PineconeVectorStore.from_existing_index(
@@ -105,7 +107,7 @@ def get_rag_chain():
             max_retries=1,
         )
 
-        # Build the retrieval-augmented generation chain
+        # Build RAG chain
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", system_prompt),
@@ -146,9 +148,7 @@ def index():
 
 @app.route("/get", methods=["GET", "POST"])
 def chat():
-    user_message = (
-        request.values.get("msg", "").strip()
-    )
+    user_message = request.values.get("msg", "").strip()
 
     if not user_message:
         return "Please enter a question.", 400
@@ -156,22 +156,19 @@ def chat():
     request_start = time.monotonic()
 
     try:
-        app.logger.info(
-            "New chatbot question received: %s",
-            user_message[:150],
-        )
+        app.logger.info("CHAT STEP 1: Question received.")
 
         chain = get_rag_chain()
 
-        app.logger.info("STEP 5: Running retrieval and Gemini...")
+        app.logger.info("CHAT STEP 2: RAG chain initialized.")
+        app.logger.info("CHAT STEP 3: Running retrieval and Gemini.")
+
         response = chain.invoke({"input": user_message})
 
         answer = response.get("answer")
 
         if not answer:
-            raise RuntimeError(
-                "The chatbot returned an empty answer."
-            )
+            raise RuntimeError("The chatbot returned an empty answer.")
 
         elapsed = time.monotonic() - request_start
 
@@ -206,3 +203,4 @@ if __name__ == "__main__":
         port=port,
         debug=False,
     )
+
