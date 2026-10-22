@@ -7,9 +7,8 @@ langchain-classic
 langchain-community
 langchain-text-splitters
 langchain-google-genai
-langchain-huggingface
 langchain-pinecone>=0.2.13
 pinecone
-sentence-transformers
+fastembed
 pypdf
 gunicorn
