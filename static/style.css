@@ -356,3 +356,37 @@ body {
         white-space: normal;
     }
 }
+/* Welcome message: align text to the left */
+.welcome-row {
+    justify-content: flex-start !important;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.msg_cotainer.welcome-message {
+    margin-left: 10px !important;
+    margin-right: 0 !important;
+
+    width: auto;
+    max-width: calc(100% - 60px);
+    box-sizing: border-box;
+
+    text-align: left !important;
+    text-indent: 0 !important;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* Keep the welcome message on one line on larger screens */
+@media (min-width: 768px) {
+    .msg_cotainer.welcome-message {
+        white-space: nowrap;
+    }
+}
+
+/* Allow wrapping on mobile */
+@media (max-width: 767px) {
+    .msg_cotainer.welcome-message {
+        white-space: normal;
+    }
+}
