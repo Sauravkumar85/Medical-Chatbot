@@ -66,12 +66,12 @@ def get_rag_chain():
 
         if not GOOGLE_API_KEY:
             raise RuntimeError(
-                "GOOGLE_API_KEY is missing from environment variables."
+                "GOOGLE_API_KEY or GEMINI_API_KEY is missing."
             )
 
         start_time = time.monotonic()
 
-        # Load embedding model
+        # Load the existing embedding model
         app.logger.info("STEP 1: Loading embedding model...")
 
         embeddings = download_hugging_face_embeddings()
@@ -81,7 +81,7 @@ def get_rag_chain():
             time.monotonic() - start_time,
         )
 
-        # Connect to existing Pinecone index
+        # Connect to the existing Pinecone index
         app.logger.info("STEP 2: Connecting to Pinecone...")
 
         docsearch = PineconeVectorStore.from_existing_index(
@@ -96,18 +96,27 @@ def get_rag_chain():
 
         app.logger.info("STEP 2 COMPLETE: Pinecone connected.")
 
-        # Configure Gemini
-        app.logger.info("STEP 3: Configuring Gemini...")
+        # Configure the primary Gemini model
+        app.logger.info("STEP 3: Configuring Gemini models...")
 
-        chat_model = ChatGoogleGenerativeAI(
+        primary_model = ChatGoogleGenerativeAI(
             model="gemini-3.8-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.3,
-            timeout=45,
+            timeout=25,
             max_retries=1,
         )
 
-        # Build RAG chain
+        # Configure the backup model
+        backup_model = ChatGoogleGenerativeAI(
+            model="gemini-3.6-flash",
+            google_api_key=GOOGLE_API_KEY,
+            temperature=0.3,
+            timeout=25,
+            max_retries=1,
+        )
+
+        # Create the medical chatbot prompt
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", system_prompt),
@@ -115,11 +124,24 @@ def get_rag_chain():
             ]
         )
 
-        question_answer_chain = create_stuff_documents_chain(
-            chat_model,
+        # Build the primary question-answer chain
+        primary_qa_chain = create_stuff_documents_chain(
+            primary_model,
             prompt,
         )
 
+        # Build the backup question-answer chain
+        backup_qa_chain = create_stuff_documents_chain(
+            backup_model,
+            prompt,
+        )
+
+        # Automatically try the backup if the primary fails
+        question_answer_chain = primary_qa_chain.with_fallbacks(
+            [backup_qa_chain]
+        )
+
+        # Build the complete RAG chain
         rag_chain = create_retrieval_chain(
             retriever,
             question_answer_chain,
@@ -168,7 +190,9 @@ def chat():
         answer = response.get("answer")
 
         if not answer:
-            raise RuntimeError("The chatbot returned an empty answer.")
+            raise RuntimeError(
+                "The chatbot returned an empty answer."
+            )
 
         elapsed = time.monotonic() - request_start
 
@@ -186,8 +210,8 @@ def chat():
         )
 
         return (
-            "The chatbot could not process your question. "
-            "Please check the Render logs for the exact error."
+            "The chatbot is temporarily unable to answer. "
+            "Please try again in a few moments."
         ), 500
 
 
@@ -203,4 +227,3 @@ if __name__ == "__main__":
         port=port,
         debug=False,
     )
-
