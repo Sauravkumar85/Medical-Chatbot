@@ -328,3 +328,31 @@ body {
         padding: 0 15px;
     }
 }
+
+/* Welcome message: use the available width and align left */
+.msg_cotainer.welcome-message {
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding-left: 16px;
+    padding-right: 16px;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* Keep the welcome sentence on one line on wider screens */
+@media (min-width: 768px) {
+    .msg_cotainer.welcome-message {
+        white-space: nowrap;
+        max-width: calc(100% - 60px);
+    }
+}
+
+/* Allow wrapping on narrow screens */
+@media (max-width: 767px) {
+    .msg_cotainer.welcome-message {
+        white-space: normal;
+    }
+}
