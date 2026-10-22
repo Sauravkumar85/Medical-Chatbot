@@ -217,4 +217,4 @@ An appropriate open-source license should be selected before public distribution
 ## Acknowledgements
 
 The project uses open-source technologies and services, including LangChain, Hugging Face, Flask, and Pinecone, along with Google's Gemini API.
-
+Link:https://medical-chatbot-2-0mhb.onrender.com
