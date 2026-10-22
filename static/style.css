@@ -1,4 +1,4 @@
-
+```css
 /* ---------------------------------
    1. Page background and layout
 ---------------------------------- */
@@ -40,9 +40,13 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
     overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
 }
 
 .card-header {
+    flex-shrink: 0;
     border-radius: 15px 15px 0 0 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     background-color: rgba(0, 0, 0, 0.15);
@@ -50,6 +54,7 @@ body {
 }
 
 .card-footer {
+    flex-shrink: 0;
     border-radius: 0 0 15px 15px !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
     background-color: rgba(0, 0, 0, 0.12);
@@ -129,7 +134,7 @@ body {
 }
 
 /* ---------------------------------
-   5. Chatbot and user avatars
+   5. Chatbot avatars
 ---------------------------------- */
 
 .img_cont {
@@ -142,7 +147,7 @@ body {
 .img_cont_msg {
     height: 40px;
     width: 40px;
-    flex-shrink: 0;
+    flex: 0 0 40px;
     align-self: flex-end;
 }
 
@@ -205,6 +210,8 @@ body {
     position: relative;
     border-radius: 18px;
     max-width: 80%;
+    min-width: 0;
+    box-sizing: border-box;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
     line-height: 1.5;
@@ -221,7 +228,62 @@ body {
     background-color: #359b55;
 }
 
-/* Message timestamps */
+/* ---------------------------------
+   8. Welcome message
+   Align avatar and text at the left
+---------------------------------- */
+
+.welcome-row {
+    display: flex;
+    justify-content: flex-start !important;
+    align-items: flex-end;
+    width: 100%;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0;
+}
+
+.welcome-row .img_cont_msg {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+}
+
+.msg_cotainer.welcome-message {
+    display: block;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: calc(100% - 50px);
+    min-width: 0;
+    margin: 5px 0 20px 10px !important;
+    padding: 12px 15px;
+
+    text-align: left !important;
+    text-indent: 0 !important;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* Keep the full welcome sentence on one line on wider screens */
+@media (min-width: 768px) {
+    .msg_cotainer.welcome-message {
+        white-space: nowrap;
+        max-width: calc(100% - 50px);
+    }
+}
+
+/* Allow the welcome sentence to wrap on small screens */
+@media (max-width: 767px) {
+    .msg_cotainer.welcome-message {
+        white-space: normal;
+        max-width: calc(100% - 50px);
+    }
+}
+
+/* ---------------------------------
+   9. Message timestamps
+---------------------------------- */
 
 .msg_time,
 .msg_time_send {
@@ -241,7 +303,7 @@ body {
 }
 
 /* ---------------------------------
-   8. Optional legacy components
+   10. Optional legacy components
 ---------------------------------- */
 
 .contacts_body {
@@ -270,7 +332,7 @@ body {
 }
 
 /* ---------------------------------
-   9. Footer disclaimer
+   11. Footer disclaimer
 ---------------------------------- */
 
 .card-footer small {
@@ -280,7 +342,7 @@ body {
 }
 
 /* ---------------------------------
-   10. Mobile responsiveness
+   12. Mobile responsiveness
 ---------------------------------- */
 
 @media (max-width: 576px) {
@@ -327,66 +389,17 @@ body {
     .send_btn {
         padding: 0 15px;
     }
-}
 
-/* Welcome message: use the available width and align left */
-.msg_cotainer.welcome-message {
-    text-align: left !important;
-    text-indent: 0 !important;
-    padding-left: 16px;
-    padding-right: 16px;
-    width: fit-content;
-    max-width: 100%;
-    box-sizing: border-box;
-    white-space: normal;
-    overflow-wrap: break-word;
-}
+    .welcome-row .img_cont_msg {
+        flex-basis: 35px;
+        width: 35px;
+        height: 35px;
+    }
 
-/* Keep the welcome sentence on one line on wider screens */
-@media (min-width: 768px) {
     .msg_cotainer.welcome-message {
-        white-space: nowrap;
-        max-width: calc(100% - 60px);
+        max-width: calc(100% - 45px);
+        margin-left: 8px !important;
+        font-size: 14px;
     }
 }
-
-/* Allow wrapping on narrow screens */
-@media (max-width: 767px) {
-    .msg_cotainer.welcome-message {
-        white-space: normal;
-    }
-}
-/* Welcome message: align text to the left */
-.welcome-row {
-    justify-content: flex-start !important;
-    align-items: flex-start;
-    width: 100%;
-}
-
-.msg_cotainer.welcome-message {
-    margin-left: 10px !important;
-    margin-right: 0 !important;
-
-    width: auto;
-    max-width: calc(100% - 60px);
-    box-sizing: border-box;
-
-    text-align: left !important;
-    text-indent: 0 !important;
-    white-space: normal;
-    overflow-wrap: break-word;
-}
-
-/* Keep the welcome message on one line on larger screens */
-@media (min-width: 768px) {
-    .msg_cotainer.welcome-message {
-        white-space: nowrap;
-    }
-}
-
-/* Allow wrapping on mobile */
-@media (max-width: 767px) {
-    .msg_cotainer.welcome-message {
-        white-space: normal;
-    }
-}
+```
